@@ -26,7 +26,8 @@ def cript():
             destino += ".cript"
         with open(destino, "wb") as f:
             f.write(datos_totales)
-        print(f"\nArchivo guardado exitosamente como: {destino}")
+            print(f"Codigo (Bytes guardados): {datos_totales.hex()}")
+            print(f"\nArchivo guardado exitosamente como: {destino}")
     else:
         # Si no hay archivo, representamos los bytes en formato hexadecimal legible para copiar y pegar
         print("\n=== Mensaje Cifrado (En Memoria) ===")
@@ -53,18 +54,33 @@ def decript():
             return
 
     try:
-        # Proceso de descifrado
+        # --- CORRECCIÓN EN LA EXTRACCIÓN DE BITS COMPRIMIDOS ---
+        # Extraemos los primeros 4 bytes que indican la longitud de la clave comprimida
         largo_clave = int.from_bytes(datos_completos[:4], 'big')
+        
+        # Extraemos exactamente los bytes que corresponden a la clave comprimida
         clave_codificada = datos_completos[4:4+largo_clave]
+        
+        # El resto absoluto de la cadena de bytes son los bits de texto comprimidos (r5)
         bytes_comprimidos = datos_completos[4+largo_clave:]
         
+        # Descomprimimos la clave con zlib
         clave_r1 = int(zlib.decompress(clave_codificada).decode('utf-8'))
         
+        # Descomprimimos los bits/datos binarios modificados usando zlib
         binario_modificado = zlib.decompress(bytes_comprimidos).decode('utf-8')
+        
+        # --- RECONSTRUCCIÓN DEL MENSAJE ORIGINAL ---
         numero_modificado = int(binario_modificado, 2)
         numero_original = numero_modificado // clave_r1
+        
+        # Convertimos de nuevo a string binario
         binario_original = format(numero_original, "b")
+        
+        # Rellenamos con ceros a la izquierda para completar bloques exactos de 8 bits (1 byte)
         bloques_completos = binario_original.zfill((len(binario_original) + 7) // 8 * 8)
+        
+        # Agrupamos en bloques de 8 bits y los convertimos en enteros (caracteres ASCII/UTF-8)
         bytes_lista = [int(bloques_completos[i:i+8], 2) for i in range(0, len(bloques_completos), 8)]
         mensaje_original = bytes(bytes_lista).decode('utf-8')
         
